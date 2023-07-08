@@ -49,7 +49,7 @@ uint8_t WiFiExtensionClass::waitForIPv6(unsigned timeout)
     while(!hasGlobalIPv6() && (millis() - start) < timeout) {
         delay(100);
     }
-    return WL_CONNECTED;
+    return hasGlobalIPv6()?WL_CONNECTED:WL_CONNECT_FAILED;
 }
 
 void WiFiExtensionClass::Initialise()
