@@ -1,4 +1,5 @@
 #include "Watchy.h"
+#include "WatchyWifi.h"
 
 WatchyRTC Watchy::RTC;
 GxEPD2_BW<WatchyDisplay, WatchyDisplay::HEIGHT> Watchy::display(
@@ -21,6 +22,9 @@ void Watchy::init(String datetime) {
   wakeup_reason = esp_sleep_get_wakeup_cause(); // get wake up reason
   Wire.begin(SDA, SCL);                         // init i2c
   RTC.init();
+
+  Serial.begin(115200);
+  WiFi.Initialise();
 
   // Init the display here for all cases, if unused, it will do nothing
   display.epd2.selectSPI(SPI, SPISettings(20000000, MSBFIRST, SPI_MODE0)); // Set SPI to 20Mhz (default is 4Mhz)
@@ -823,14 +827,22 @@ void Watchy::setupWifi() {
   if (!wifiManager.autoConnect(WIFI_AP_SSID)) { // WiFi setup failed
     display.println("Setup failed &");
     display.println("timed out!");
+    display.display(false); // full refresh
   } else {
+    display.fillScreen(GxEPD_BLACK);
+    display.setCursor(0, 30);
     display.println("Connected to");
     display.println(WiFi.SSID());
 		display.println("Local IP:");
 		display.println(WiFi.localIP());
+    display.display(false); // full refresh
+    if(WiFi.waitForIPv6() == WL_CONNECTED) {
+      display.println("Local IPv6:");
+      display.println(WiFi.activeIPv6());
+      display.display(false); // full refresh
+    }
     weatherIntervalCounter = -1; // Reset to force weather to be read again
   }
-  display.display(false); // full refresh
   // turn off radios
   WiFi.mode(WIFI_OFF);
   btStop();
@@ -863,6 +875,7 @@ bool Watchy::connectWiFi() {
   } else {
     if (WL_CONNECTED ==
         WiFi.waitForConnectResult()) { // attempt to connect for 10s
+      WiFi.waitForIPv6();
       WIFI_CONFIGURED = true;
     } else { // connection failed, time out
       WIFI_CONFIGURED = false;
